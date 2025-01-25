@@ -70,20 +70,20 @@ METADRIVE_DEFAULT_CONFIG = dict(
 
     # ===== Reward Scheme =====
     # See: https://github.com/metadriverse/metadrive/issues/283
-    success_reward=20.5,
+    success_reward=20.0,
     out_of_road_penalty=5.0,
-    crash_vehicle_penalty=10.0,
+    crash_vehicle_penalty=5.0,
     crash_object_penalty=5.0,
     crash_sidewalk_penalty=0.0,
     driving_reward=1.0,
-    speed_reward=0.15,
+    speed_reward=0.10,
     use_lateral_reward=False,
     heading_penalty=0.1,
     seldom_steering_reward=0.1,
     heading_reward=0.1,
     lateral_penalty=0.05,
     checkpoint_reward=0.1,
-    overtake_reward = 0.5,
+    overtake_reward=1.0,
     reward_w_on_lane = 0,
 
     # ===== Cost Scheme =====
@@ -293,9 +293,7 @@ class MetaDriveEnv(BaseEnv):
         progress = long_now - long_last
 
         # 小车离检查点的车头朝向和车身侧向投影距离，越1越好
-        bendradius = vehicle.navigation._navi_info[2]  # vehicle.navigation._navi_info[2] 0弯，1直
-
-
+        bendradius = vehicle.navigation._navi_info[2]
 
         # now_count = 0
         # other_v_info = None
@@ -340,11 +338,15 @@ class MetaDriveEnv(BaseEnv):
         # danger_efficient = min(cf, 1)
         # vehicle.get_overtake_num()
 
-
         current_takeover_num = vehicle.get_overtake_num()
-        reward += (current_takeover_num - self.last_takeover_num) * 0.1
-        step_info["step_reward_pass_car"] = (current_takeover_num - self.last_takeover_num) * 0.1
+        overtake_reward = (current_takeover_num - self.last_takeover_num) * self.config["overtake_reward"]
+        reward += overtake_reward
         self.last_takeover_num = current_takeover_num
+
+
+        if current_takeover_num > self.last_takeover_num:  # 超车成功给额外奖励
+            speed_bonus = vehicle.speed_km_h / vehicle.max_speed_km_h
+            reward += self.config["speed_reward"] * speed_bonus
 
         reward += self.config["driving_reward"] * progress * positive_road
         reward += self.config["speed_reward"] * speed
@@ -352,7 +354,7 @@ class MetaDriveEnv(BaseEnv):
         reward -= 0.1 * (1-heading_diff)
         reward -= 0.06 * (steer_diff)
         reward += 0.04 * (1-steer_diff)
-
+        print(overtake_reward)
 
         if vehicle.on_broken_line:
             self.last_on_broken_line += 1
