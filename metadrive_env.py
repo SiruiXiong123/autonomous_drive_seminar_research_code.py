@@ -83,7 +83,7 @@ METADRIVE_DEFAULT_CONFIG = dict(
     heading_reward=0.1,
     lateral_penalty=0.05,
     checkpoint_reward=0.1,
-    overtake_reward=15.0,
+    overtake_reward=0.5,
     reward_w_on_lane = 0,
     lane_change_reward = 0.05,
 
