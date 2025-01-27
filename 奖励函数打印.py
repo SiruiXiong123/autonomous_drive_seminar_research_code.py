@@ -30,7 +30,7 @@ cfg=dict(
 
 env=MetaDriveEnv(cfg)
 
-num_episodes = 1
+num_episodes = 2
 
 for episode in range(num_episodes):
     obs = env.reset()
@@ -41,7 +41,7 @@ for episode in range(num_episodes):
 
         obs, reward, done, info, _ = env.step(action)
         # 打印当前时间步的奖励值
-        print(f"Episode: {episode + 1}, Reward: {reward}")
+w
 
 # 关闭环境
 env.close()

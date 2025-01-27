@@ -149,7 +149,7 @@ BASE_DEFAULT_CONFIG = dict(
 
         # ==== others ====
         # How many cars the vehicle has overtaken. It is deprecated due to bug.
-        overtake_stat=False,
+        overtake_stat=True,
         # If set to True, the default texture for the vehicle will be replaced with a pure color one.
         random_color=False,
         # The shape of vehicle are predefined by its class. But in special scenario (WaymoVehicle) we might want to
