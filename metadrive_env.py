@@ -21,7 +21,7 @@ METADRIVE_DEFAULT_CONFIG = dict(
     num_scenarios=1,
 
     # ===== PG Map Config =====
-    map="SSSSS",  # int or string: an easy way to fill map_config
+    map=3,  # int or string: an easy way to fill map_config
     block_dist_config=PGBlockDistConfig,
     random_lane_width=False,
     random_lane_num=False,
@@ -72,20 +72,20 @@ METADRIVE_DEFAULT_CONFIG = dict(
     # See: https://github.com/metadriverse/metadrive/issues/283
     success_reward=20.0,
     out_of_road_penalty=5.0,
-    crash_vehicle_penalty=8.0,
+    crash_vehicle_penalty=5.0,
     crash_object_penalty=5.0,
     crash_sidewalk_penalty=0.0,
     driving_reward=1.0,
-    speed_reward=0.10,
+    speed_reward=0.25,
     use_lateral_reward=False,
     heading_penalty=0.1,
     seldom_steering_reward=0.1,
     heading_reward=0.1,
     lateral_penalty=0.05,
     checkpoint_reward=0.1,
-    overtake_reward=0.1,
+    overtake_reward=0.5,
     reward_w_on_lane = 0,
-    # lane_change_reward = 0.01,
+    lane_change_reward = 0.01,
 
     # ===== Cost Scheme =====
     crash_vehicle_cost=1.0,
@@ -293,58 +293,43 @@ class MetaDriveEnv(BaseEnv):
         speed = (vehicle.speed_km_h / vehicle.max_speed_km_h)
         progress = long_now - long_last
 
-        # 小车离检查点的车头朝向和车身侧向投影距离，越1越好
-        bendradius = vehicle.navigation._navi_info[2]
+        now_count = 0
+        other_v_info = None
+        other_v_info = self.get_single_observation().lidar_observe(vehicle)[:16]
 
-        # now_count = 0
-        # other_v_info = None
-        # other_v_info = self.get_single_observation().lidar_observe(vehicle)[:16]
-        # for i in range(4):
-        #     dx = other_v_info[4 * i + 0]  # 该车相对x
-        #     if dx < 0.5:
-        #         now_count += 1
-        #
-        # overtake_reward = 0
-        # if now_count > self.last_count:
-        #     overtake_reward = (now_count - self.last_count) * self.config["overtake_reward"]
-        #     self.last_count = now_count
-        #
-        # mf = 0.20
-        # a = 0.1
-        # b = 0.1
-        # px = 2
-        # py = 2
-        # pvx = 2
-        # pvy = 2
-        # pt = 1
-        # yip = 0.5
-        # vehicles_info = [
-        #     other_v_info[i * 4:(i + 1) * 4] for i in range(4)
-        # ]
-        # round_list = []
-        # for i in range(4):
-        #     dx = vehicles_info[i][0]
-        #     dy = vehicles_info[i][1]
-        #     dvx = vehicles_info[i][2]
-        #     dvy = vehicles_info[i][3]
-        #
-        #     Ec = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + 1) ** pt  # 紧急风险评估
-        #     Eb = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + (abs(dvx)) ** pvx + (
-        #         abs(dvy)) ** pvy + 1) ** pt  # 速度差距越大也可能提升风险的非紧急凤霞评估
-        #     cfj = Ec + Eb
-        #     round_list.append(cfj)
-        #
-        # cf = sum(round_list)
-        #
-        # danger_efficient = min(cf, 1)
-        # vehicle.get_overtake_num()
+        mf = 0.10
+        a = 0.1
+        b = 0.1
+        px = 2
+        py = 2
+        pvx = 2
+        pvy = 2
+        pt = 1
+        yip = 0.5
+        vehicles_info = [
+            other_v_info[i * 4:(i + 1) * 4] for i in range(4)
+        ]
+        round_list = []
+        for i in range(4):
+            dx = vehicles_info[i][0]
+            dy = vehicles_info[i][1]
+            dvx = vehicles_info[i][2]
+            dvy = vehicles_info[i][3]
 
-        #变道奖励
+            Ec = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + 1) ** pt  # 紧急风险评估
+            Eb = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + (abs(dvx)) ** pvx + (
+                abs(dvy)) ** pvy + 1) ** pt
+            cfj = Ec + Eb
+            round_list.append(cfj)
+        cf = sum(round_list) #因为a,b小于1，所以离其他车越远，cf越大
+        safe = min(cf, 1)
+        danger_coefficient = 1 - safe
+
         # current_lane = vehicle.lane.index
         # last_lane_id = getattr(vehicle, "last_lane_id", current_lane)
         # is_lane_changed = (current_lane != last_lane_id)
         # vehicle.last_lane_id = current_lane
-
+        #
         # if is_lane_changed :
         #     reward += self.config["lane_change_reward"]
         # else:
@@ -362,8 +347,8 @@ class MetaDriveEnv(BaseEnv):
         reward += self.config["speed_reward"] * speed
         reward += self.config["heading_reward"] * heading_diff  # 过弯问题
         reward -= 0.1 * (1-heading_diff)
-        reward -= 0.06 * (steer_diff)
-        reward += 0.04 * (1-steer_diff)
+        reward -= 0.1 * (1-danger_coefficient)
+
 
         if vehicle.on_broken_line:
             self.last_on_broken_line += 1

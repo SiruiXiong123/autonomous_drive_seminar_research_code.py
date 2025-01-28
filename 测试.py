@@ -1,116 +1,72 @@
-log_data = '''
-[INFO] Assets version: 0.4.2.3
-[INFO] Known Pipes: wglGraphicsPipe
-[INFO] Start Scenario Index: 0, Num Scenarios : 100
-[INFO] Episode ended! Scenario Index: 55 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 69 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 29 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 7 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 71 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 63 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 9 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 11 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 14 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 57 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 59 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 8 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 50 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 27 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 88 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 90 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 45 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 61 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 93 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 17 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 39 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 53 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 84 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 93 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 9 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 59 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 23 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 30 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 1 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 86 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 96 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 59 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 52 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 18 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 42 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 89 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 78 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 4 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 52 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 39 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 86 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 93 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 14 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 87 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 27 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 88 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 99 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 77 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 9 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 7 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 31 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 75 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 98 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 83 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 9 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 77 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 64 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 47 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 78 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 25 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 60 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 10 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 48 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 20 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 49 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 18 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 20 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 57 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 43 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 23 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 26 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 16 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 48 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 57 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 57 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 29 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 55 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 81 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 87 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 62 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 19 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 95 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 20 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 57 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 7 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 85 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 41 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 85 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 77 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 87 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 46 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 25 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 2 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 91 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 4 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 18 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 27 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 96 Reason: arrive_dest.
-[INFO] Episode ended! Scenario Index: 28 Reason: out_of_road.
-[INFO] Episode ended! Scenario Index: 18 Reason: arrive_dest.
-'''
-lines = log_data.splitlines()
+from metadrive.obs.state_obs import StateObservation, LidarStateObservation
+from metadrive.obs.observation_base import BaseObservation
+import os
+import gymnasium as gym
+from metadrive.envs.metadrive_env import MetaDriveEnv
+from EgostateAndNavigation_obs import EgoStateNavigationobservation
+from stable_baselines3 import PPO
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+from stable_baselines3.common.evaluation import evaluate_policy
+from functools import partial
+from stable_baselines3 import TD3
+from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
+import random
 
-# 统计成功和总次数
-success_count = sum("Reason: arrive_dest" in line for line in lines)
-total_count = sum("Episode ended!" in line for line in lines)
+random.seed(123)
 
-# 计算成功率
-success_rate = success_count / total_count * 100 if total_count > 0 else 0
-print(f"Total Episodes: {total_count}")
-print(f"Successful Episodes: {success_count}")
-print(f"Success Rate: {success_rate:.2f}%")
+base_path = r'C:\Users\xsr\Desktop\ego_state'
+log_path = os.path.join(base_path, 'Training', 'Logs')
+
+def create_env(need_monitor=False):
+    env = MetaDriveEnv(cfg)
+    if need_monitor:
+        env = Monitor(env)
+    return env
+
+if __name__ == '__main__':
+    cfg = dict(
+        num_scenarios=100,
+        start_seed=0,
+        random_lane_width=True,
+        random_lane_num=False,
+        use_render=True,
+        traffic_density=0.1,
+        traffic_mode="hybrid",
+    )
+
+    def create_env_for_testing():
+        def _env_fn():
+            return MetaDriveEnv(cfg)
+        return DummyVecEnv([_env_fn])
+
+    env = create_env_for_testing()
+    TD3_Path = os.path.join(base_path, 'Training', 'Saved Models', 'overtake v0.5.zip')
+
+    model = TD3.load(TD3_Path, env=env)
+    # episode_rewards, episode_infos = evaluate_policy(
+    #     model,
+    #     env,
+    #     n_eval_episodes=100,  # 评估 100 次
+    #     deterministic=True,
+    #     render=False,
+    #     return_episode_rewards=True  # 返回每个 episode 的奖励和信息
+    # )
+
+
+
+
+    episodes = 5
+    for episode in range(1, episodes + 1):
+        obs = env.reset()  # VecEnv 的 reset 返回直接是 obs
+        done = False
+        score = 0
+
+        while not done:
+            env.render(mode="topdown")
+            action, _ = model.predict(obs, deterministic=True)
+            obs, reward, done, info = env.step(action)  # VecEnv 的 step 返回 dones
+            score += reward
+            if done:
+                break
+    env.close()
