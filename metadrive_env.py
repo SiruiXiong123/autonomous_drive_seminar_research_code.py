@@ -70,7 +70,7 @@ METADRIVE_DEFAULT_CONFIG = dict(
 
     # ===== Reward Scheme =====
     # See: https://github.com/metadriverse/metadrive/issues/283
-    success_reward=10.0,
+    success_reward=20.0,
     out_of_road_penalty=5.0,
     crash_vehicle_penalty=8.0,
     crash_object_penalty=5.0,
@@ -83,9 +83,9 @@ METADRIVE_DEFAULT_CONFIG = dict(
     heading_reward=0.1,
     lateral_penalty=0.05,
     checkpoint_reward=0.1,
-    overtake_reward=0.5,
+    overtake_reward=0.1,
     reward_w_on_lane = 0,
-    lane_change_reward = 0.05,
+    # lane_change_reward = 0.01,
 
     # ===== Cost Scheme =====
     crash_vehicle_cost=1.0,
@@ -340,15 +340,15 @@ class MetaDriveEnv(BaseEnv):
         # vehicle.get_overtake_num()
 
         #变道奖励
-        current_lane = vehicle.lane.index
-        last_lane_id = getattr(vehicle, "last_lane_id", current_lane)
-        is_lane_changed = (current_lane != last_lane_id)
-        vehicle.last_lane_id = current_lane
+        # current_lane = vehicle.lane.index
+        # last_lane_id = getattr(vehicle, "last_lane_id", current_lane)
+        # is_lane_changed = (current_lane != last_lane_id)
+        # vehicle.last_lane_id = current_lane
 
-        if is_lane_changed :
-            reward += self.config["lane_change_reward"]
-        else:
-            reward += 0
+        # if is_lane_changed :
+        #     reward += self.config["lane_change_reward"]
+        # else:
+        #     reward += 0
 
         current_takeover_num = vehicle.get_overtake_num()
         delta = current_takeover_num - self.last_takeover_num

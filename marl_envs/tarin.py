@@ -17,7 +17,8 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 
 random.seed(123)
 cfg=dict(
-        map="SXSOS",
+        num_scenarios=500,
+        start_seed=123,
         random_lane_width=True,
         random_lane_num=False,
         use_render=False,
