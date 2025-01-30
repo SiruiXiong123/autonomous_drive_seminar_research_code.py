@@ -70,27 +70,25 @@ METADRIVE_DEFAULT_CONFIG = dict(
 
     # ===== Reward Scheme =====
     # See: https://github.com/metadriverse/metadrive/issues/283
-    success_reward=20.0,
+    success_reward=10.0,
     out_of_road_penalty=5.0,
-    crash_vehicle_penalty=5.0,
+    run_out_of_time_penalty=5.0,
+    crash_vehicle_penalty=1.0,
     crash_object_penalty=5.0,
-    crash_sidewalk_penalty=0.0,
+    crash_sidewalk_penalty=5.0,
     driving_reward=1.0,
-    speed_reward=0.25,
+    speed_reward=0.20,
     use_lateral_reward=False,
-    heading_penalty=0.1,
-    seldom_steering_reward=0.1,
-    heading_reward=0.1,
-    lateral_penalty=0.05,
-    checkpoint_reward=0.1,
-    overtake_reward=0.5,
+    heading_reward=0.15,
+    overtake_reward=0.1,
     reward_w_on_lane = 0,
-    lane_change_reward = 0.01,
 
     # ===== Cost Scheme =====
     crash_vehicle_cost=1.0,
     crash_object_cost=1.0,
     out_of_road_cost=1.0,
+
+    speed_to_cal_time_limit = 4.0,
 
     # ===== Termination Scheme =====
     out_of_route_done=False,
@@ -120,6 +118,7 @@ class MetaDriveEnv(BaseEnv):
         self.start_seed = self.start_index = self.config["start_seed"]
         self.env_num = self.num_scenarios
         self.last_takeover_num = 0
+
 
         self.last_on_broken_line = 0
     def _post_process_config(self, config):
@@ -257,6 +256,21 @@ class MetaDriveEnv(BaseEnv):
             ret = ret or vehicle.on_broken_line
         return ret
 
+    def get_navigation_len(self, vehicle):
+        checkpoints = vehicle.navigation.checkpoints
+        road_network = vehicle.navigation.map.road_network
+        total_dist = 0
+        assert len(checkpoints) >=2
+        for check_num in range(0, len(checkpoints)-1):
+            front_node = checkpoints[check_num]
+            end_node = checkpoints[check_num+1]
+            cur_lanes = road_network.graph[front_node][end_node]
+            target_lane_num = int(len(cur_lanes) / 2)
+            target_lane = cur_lanes[target_lane_num]
+            target_lane_length = target_lane.length
+            total_dist += target_lane_length
+        return total_dist
+
     def reward_function(self, vehicle_id: str):
         """
         Override this func to get a new reward function
@@ -267,6 +281,9 @@ class MetaDriveEnv(BaseEnv):
         step_info = dict()
         reward = 0.0
 
+        if self._compute_navi_dist:
+            self.navi_distance = self.get_navigation_len(vehicle)
+            self._compute_navi_dist = False
 
         # Reward for moving forward in current lane
         if vehicle.lane in vehicle.navigation.current_ref_lanes:
@@ -295,35 +312,39 @@ class MetaDriveEnv(BaseEnv):
 
         now_count = 0
         other_v_info = None
-        other_v_info = self.get_single_observation().lidar_observe(vehicle)[:16]
+        # TODO:获取小车周围信息
+        # other_v_info = self.get_single_observation().lidar_observe(vehicle)[:16]
 
-        mf = 0.10
-        a = 0.1
-        b = 0.1
-        px = 2
-        py = 2
-        pvx = 2
-        pvy = 2
-        pt = 1
-        yip = 0.5
-        vehicles_info = [
-            other_v_info[i * 4:(i + 1) * 4] for i in range(4)
-        ]
-        round_list = []
-        for i in range(4):
-            dx = vehicles_info[i][0]
-            dy = vehicles_info[i][1]
-            dvx = vehicles_info[i][2]
-            dvy = vehicles_info[i][3]
+        # mf = 0.15
+        # a = 1
+        # b = 1
+        # px = 2
+        # py = 2
+        # pvx = 2
+        # pvy = 2
+        # pt = 1
+        # yip = 0.5
+        # vehicles_info = [
+        #     other_v_info[i * 4:(i + 1) * 4] for i in range(4)
+        # ]
+        # round_list = []
+        # for i in range(4):
+        #     dx = vehicles_info[i][0]
+        #     dy = vehicles_info[i][1]
+        #     dvx = vehicles_info[i][2]
+        #     dvy = vehicles_info[i][3]
+        #
+        #     Ec = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + 1) ** pt  # 紧急风险评估
+        #     Eb = 1.5 * (mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + (abs(dvx)) ** pvx + (
+        #         abs(dvy)) ** pvy + 1) ** pt)
+        #     if  dx == 0 and dy == 0 and dvx == 0 and dvy == 0:
+        #         cfj = 0
+        #     else:
+        #         cfj = Ec + Eb
+        #     round_list.append(cfj)
+        # cf = sum(round_list)
+        # danger_coefficient = min(cf, 1)
 
-            Ec = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + 1) ** pt  # 紧急风险评估
-            Eb = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + (abs(dvx)) ** pvx + (
-                abs(dvy)) ** pvy + 1) ** pt
-            cfj = Ec + Eb
-            round_list.append(cfj)
-        cf = sum(round_list) #因为a,b小于1，所以离其他车越远，cf越大
-        safe = min(cf, 1)
-        danger_coefficient = 1 - safe
 
         # current_lane = vehicle.lane.index
         # last_lane_id = getattr(vehicle, "last_lane_id", current_lane)
@@ -335,6 +356,13 @@ class MetaDriveEnv(BaseEnv):
         # else:
         #     reward += 0
 
+        #====================平稳驾驶
+        reward += (1 - steer_diff) * 0.004
+        reward -= (steer_diff ** 2) * 0.002
+
+
+
+        #===================超车奖励
         current_takeover_num = vehicle.get_overtake_num()
         delta = current_takeover_num - self.last_takeover_num
         if delta > 0:
@@ -344,17 +372,17 @@ class MetaDriveEnv(BaseEnv):
         self.last_takeover_num = current_takeover_num
 
         reward += self.config["driving_reward"] * progress * positive_road
+
         reward += self.config["speed_reward"] * speed
+        if vehicle.speed_km_h < 10:
+            reward -= 0.04
+
         reward += self.config["heading_reward"] * heading_diff  # 过弯问题
-        reward -= 0.1 * (1-heading_diff)
-        reward -= 0.1 * (1-danger_coefficient)
+        reward -= (1-heading_diff) * 0.005
 
+        # reward -= 0.05 * (1-heading_diff)
+        # reward -= 0.1 * (danger_coefficient)
 
-        if vehicle.on_broken_line:
-            self.last_on_broken_line += 1
-
-        reward -= self.config["reward_w_on_lane"] * self.last_on_broken_line
-        self.last_on_broken_line = 0
 
         step_info["step_reward"] = reward
 
@@ -368,9 +396,12 @@ class MetaDriveEnv(BaseEnv):
             reward = -self.config["crash_object_penalty"]
         elif vehicle.crash_sidewalk:
             reward = -self.config["crash_sidewalk_penalty"]
+        elif self.env_step_num > self.navi_distance / self.config['speed_to_cal_time_limit'] * 10:
+            reward = - self.config["run_out_of_time_penalty"]
         step_info["route_completion"] = vehicle.navigation.route_completion
 
         return reward, step_info
+
 
     def setup_engine(self):
         super(MetaDriveEnv, self).setup_engine()

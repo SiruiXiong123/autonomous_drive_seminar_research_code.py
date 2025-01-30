@@ -304,6 +304,9 @@ class BaseEnv(gym.Env):
         # observation and action space
         self.agent_manager = self._get_agent_manager()
 
+        #===========timeout
+        self.env_step_num = 0
+
         # lazy initialization, create the main simulation in the lazy_init() func
         # self.engine: Optional[BaseEngine] = None
 
@@ -313,6 +316,8 @@ class BaseEnv(gym.Env):
 
         # press p to stop
         self.in_stop = False
+
+        self.navi_distance = 100.0
 
         # scenarios
         self.start_index = 0
@@ -434,6 +439,7 @@ class BaseEnv(gym.Env):
         engine_info = self._step_simulator(actions)  # step the simulation
         while self.in_stop:
             self.engine.taskMgr.step()  # pause simulation
+        self.env_step_num += 1
         return self._get_step_return(actions, engine_info=engine_info)  # collect observation, reward, termination
 
     def _preprocess_actions(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray], int]) \
@@ -528,6 +534,8 @@ class BaseEnv(gym.Env):
             )
         reset_info = self.engine.reset()
         self.reset_sensors()
+        self._compute_navi_dist = True
+        self.env_step_num = 0
 
         # render the scene
         self.engine.taskMgr.step()

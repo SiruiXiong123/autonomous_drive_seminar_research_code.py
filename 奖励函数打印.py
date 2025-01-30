@@ -18,7 +18,9 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 
 
 cfg=dict(
-        map="SSSS",
+        map="S",
+        # num_scenarios=500,
+        # start_seed=123,
         random_lane_width=True,
         random_lane_num=False,
         use_render=True,
@@ -30,7 +32,7 @@ cfg=dict(
 
 env=MetaDriveEnv(cfg)
 
-num_episodes = 2
+num_episodes = 3
 
 for episode in range(num_episodes):
     obs = env.reset()
