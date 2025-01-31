@@ -73,14 +73,14 @@ METADRIVE_DEFAULT_CONFIG = dict(
     success_reward=10.0,
     out_of_road_penalty=5.0,
     run_out_of_time_penalty=5.0,
-    crash_vehicle_penalty=1.0,
+    crash_vehicle_penalty=5.0,
     crash_object_penalty=5.0,
     crash_sidewalk_penalty=5.0,
     driving_reward=1.0,
-    speed_reward=0.20,
+    speed_reward=0.15,
     use_lateral_reward=False,
     heading_reward=0.15,
-    overtake_reward=0.1,
+    overtake_reward=0.25,
     reward_w_on_lane = 0,
 
     # ===== Cost Scheme =====
@@ -100,6 +100,80 @@ METADRIVE_DEFAULT_CONFIG = dict(
     crash_human_done=True,
 )
 
+
+def denormalize_lidar_data(vehicles_info, perceive_distance=50, max_speed_km_h=120):
+    """
+    将 16 维 lidar_observe() 输出的归一化 dx, dy, dvx, dvy 还原为真实单位（米, km/h）。
+
+    :param vehicles_info: list，可以是:
+        - 长度为 16 的 list（会自动拆分为 4 组 [dx, dy, dvx, dvy]）
+        - 已经拆分好的 [[dx, dy, dvx, dvy], [dx, dy, dvx, dvy], ...]
+    :param perceive_distance: int，车辆的感知范围（米）
+    :param max_speed_km_h: int，车辆的最大速度（km/h）
+    :return: list，包含未归一化的 [[dx, dy, dvx, dvy], [dx, dy, dvx, dvy], ...] 数据
+    """
+
+    denormalized_data = []
+
+    # 如果输入是一维列表（长度 16），则自动拆分成 4 组
+    if isinstance(vehicles_info, list) and len(vehicles_info) == 16:
+        vehicles_info = [vehicles_info[i:i + 4] for i in range(0, len(vehicles_info), 4)]
+
+    # 确保它是列表的列表
+    if not all(isinstance(v, list) and len(v) == 4 for v in vehicles_info):
+        print(f"ERROR: Invalid vehicles_info format: {vehicles_info}, expected list of [dx, dy, dvx, dvy] groups.")
+        return []
+
+    # 进行反归一化
+    for vehicle_info in vehicles_info:
+        dx_norm, dy_norm, dvx_norm, dvy_norm = vehicle_info
+
+        dx_real = (dx_norm * 2 - 1) * perceive_distance
+        dy_real = (dy_norm * 2 - 1) * perceive_distance
+        dvx_real = (dvx_norm * 2 - 1) * max_speed_km_h
+        dvy_real = (dvy_norm * 2 - 1) * max_speed_km_h
+
+        denormalized_data.append([dx_real, dy_real, dvx_real, dvy_real])
+
+    return denormalized_data
+
+def compute_ellipsoid_risk(vehicles_info, a=4, b=3, px=2, py=2,
+                          pvx=3, pvy=3, pt=2, mf=1):
+    """
+    计算椭圆势场风险值
+
+    :param vehicles_info: list，每个元素是 [dx, dy, dvx, dvy]（真实物理单位，米 & km/h）
+    :param a: float, 椭圆长轴（纵向感知范围，米）
+    :param b: float, 椭圆短轴（横向感知范围，米）
+    :param px: int, 纵向指数
+    :param py: int, 横向指数
+    :param pvx: int, 纵向速度指数
+    :param pvy: int, 横向速度指数
+    :param pt: int, 控制衰减程度
+    :param mf: float, 最大风险值
+    :param speed_factor: float, 速度对风险的影响因子
+    :return: float, 计算得到的风险值（归一化到 0-1）
+    """
+    risk_list = []
+
+    #dx<4.8,dy<2.5碰撞概率直线上升
+    #mf:超车最大风险值
+    for dx, dy, dvx, dvy in vehicles_info:
+        # 静态风险项 (基于距离)
+        Ec = mf / ((((abs(dx) - 4.6) / a) ** px + ((abs(dy)-2.5) / b) ** py + 1) ** pt)
+
+        # 速度修正项 (基于速度)
+        Eb = mf / ((((abs(dx) - 4.6)/ a) ** px + ((abs(dy)-2.5)/ b) ** py + (abs(dvx) / 1) ** pvx + (
+                    abs(dvy) / 1) ** pvy + 1) ** pt)
+
+        if dx == -50 and dy == -50 and dvx == -120 and dvy == -120:
+            cfj = 0.0
+        else:
+            cfj = Ec + Eb
+        risk_list.append(cfj)
+
+    total_risk = min(sum(risk_list), 1)  # 归一化到 [0,1]
+    return total_risk
 
 class MetaDriveEnv(BaseEnv):
     @classmethod
@@ -314,74 +388,42 @@ class MetaDriveEnv(BaseEnv):
         other_v_info = None
         # TODO:获取小车周围信息
         # other_v_info = self.get_single_observation().lidar_observe(vehicle)[:16]
-
-        # mf = 0.15
-        # a = 1
-        # b = 1
-        # px = 2
-        # py = 2
-        # pvx = 2
-        # pvy = 2
-        # pt = 1
-        # yip = 0.5
-        # vehicles_info = [
-        #     other_v_info[i * 4:(i + 1) * 4] for i in range(4)
-        # ]
-        # round_list = []
-        # for i in range(4):
-        #     dx = vehicles_info[i][0]
-        #     dy = vehicles_info[i][1]
-        #     dvx = vehicles_info[i][2]
-        #     dvy = vehicles_info[i][3]
+        # vehicles_info = denormalize_lidar_data(other_v_info)
         #
-        #     Ec = mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + 1) ** pt  # 紧急风险评估
-        #     Eb = 1.5 * (mf / ((abs(dx) / a) ** px + (abs(dy) / b) ** py + (abs(dvx)) ** pvx + (
-        #         abs(dvy)) ** pvy + 1) ** pt)
-        #     if  dx == 0 and dy == 0 and dvx == 0 and dvy == 0:
-        #         cfj = 0
-        #     else:
-        #         cfj = Ec + Eb
-        #     round_list.append(cfj)
-        # cf = sum(round_list)
-        # danger_coefficient = min(cf, 1)
+        # total_risk = compute_ellipsoid_risk(vehicles_info)
+        # reward -= 0.1 * total_risk
 
-
-        # current_lane = vehicle.lane.index
-        # last_lane_id = getattr(vehicle, "last_lane_id", current_lane)
-        # is_lane_changed = (current_lane != last_lane_id)
-        # vehicle.last_lane_id = current_lane
-        #
-        # if is_lane_changed :
-        #     reward += self.config["lane_change_reward"]
-        # else:
-        #     reward += 0
 
         #====================平稳驾驶
         reward += (1 - steer_diff) * 0.004
         reward -= (steer_diff ** 2) * 0.002
 
 
-
-        #===================超车奖励
-        current_takeover_num = vehicle.get_overtake_num()
-        delta = current_takeover_num - self.last_takeover_num
-        if delta > 0:
-            reward += self.config["overtake_reward"] * delta
-            print(f"✌超车了，增长 {delta} 次")
-
-        self.last_takeover_num = current_takeover_num
+        # overtake_flag = False
+        # #===================超车奖励
+        # current_takeover_num = vehicle.get_overtake_num()
+        # delta = current_takeover_num - self.last_takeover_num
+        # if delta > 0:
+        #     reward += self.config["overtake_reward"] * delta
+        #     print(f"✌超车了，增长 {delta} 次")
+        #     overtake_flag = True
+        #
+        # self.last_takeover_num = current_takeover_num
 
         reward += self.config["driving_reward"] * progress * positive_road
 
-        reward += self.config["speed_reward"] * speed
-        if vehicle.speed_km_h < 10:
-            reward -= 0.04
+        speed_factor = 1.0
+        # if vehicle.speed_km_h < 10:
+        #     reward -= 0.04
+        # elif vehicle.speed_km_h > 70 and overtake_flag:
+        #     speed_factor = 2.0
+        #     overtake_flag = False
+
+        reward += speed_factor * self.config["speed_reward"] * speed
 
         reward += self.config["heading_reward"] * heading_diff  # 过弯问题
         reward -= (1-heading_diff) * 0.005
 
-        # reward -= 0.05 * (1-heading_diff)
-        # reward -= 0.1 * (danger_coefficient)
 
 
         step_info["step_reward"] = reward

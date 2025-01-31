@@ -22,20 +22,19 @@ cfg=dict(
         random_lane_width=True,
         random_lane_num=False,
         use_render=False,
-        traffic_density=0.1,
-        traffic_mode="hybrid",
+        traffic_density=0,
+        # traffic_mode="hybrid",
+        agent_observation=EgoStateNavigationobservation
     )
 
 base_path = r'C:\Users\xsr\Desktop\ego_state'
 log_path = os.path.join(base_path, 'Training', 'Logs')
-
 
 def create_env(need_monitor=False):
     env = MetaDriveEnv(cfg)
     if need_monitor:
         env = Monitor(env)
     return env
-
 
 #防止子进程递归调用主程序脚本，需要if name
 
@@ -53,7 +52,7 @@ if __name__ == '__main__':
     model = TD3("MlpPolicy", env, action_noise=action_noise, verbose=1,tensorboard_log=log_path)
     # model = PPO('MlpPolicy', env, verbose=1, n_steps=4096, tensorboard_log=log_path)
     model.learn(total_timesteps=3000000, log_interval=100,callback=event_callback)
-    PPO_Path = os.path.join(base_path, 'Training', 'Saved Models', 'overtake v0.5.zip')
+    PPO_Path = os.path.join(base_path, 'Training', 'Saved Models', 'no_traffic.zip')
     model.save(PPO_Path)
 
     # tensorboard --logdir "C:\Users\xsr\Desktop\ego_state\Training\Logs\TD3_1"

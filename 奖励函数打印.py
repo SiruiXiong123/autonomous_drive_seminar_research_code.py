@@ -18,7 +18,7 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 
 
 cfg=dict(
-        map="S",
+        map="SSSS",
         # num_scenarios=500,
         # start_seed=123,
         random_lane_width=True,
