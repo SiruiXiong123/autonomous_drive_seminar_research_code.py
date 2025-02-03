@@ -82,7 +82,7 @@ BASE_DEFAULT_CONFIG = dict(
     # The maximum length of each agent episode. Set to None to remove this constraint
     horizon=None,
     # If set to True, the terminated will be True as well when the length of agent episode exceeds horizon
-    truncate_as_terminate=False,
+    truncate_as_terminate=None,
 
     # ===== Main Camera =====
     # A True value makes the camera follow the reference line instead of the vehicle, making its movement smooth

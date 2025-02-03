@@ -14,6 +14,7 @@ from metadrive.utils import clip, Config
 # from egostate_obs import EgoStateobservation
 from EgostateAndNavigation_obs import EgoStateNavigationobservation
 from mpmath.matrices.eigen import hessenberg_qr
+from openpyxl.styles.builtins import total
 
 METADRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
@@ -70,17 +71,17 @@ METADRIVE_DEFAULT_CONFIG = dict(
 
     # ===== Reward Scheme =====
     # See: https://github.com/metadriverse/metadrive/issues/283
-    success_reward=10.0,
+    success_reward=20.0,
     out_of_road_penalty=5.0,
     run_out_of_time_penalty=5.0,
-    crash_vehicle_penalty=5.0,
+    crash_vehicle_penalty=1.0,
     crash_object_penalty=5.0,
     crash_sidewalk_penalty=5.0,
     driving_reward=1.0,
-    speed_reward=0.15,
+    speed_reward=0.2,
     use_lateral_reward=False,
     heading_reward=0.15,
-    overtake_reward=0.25,
+    overtake_reward=0.15,
     reward_w_on_lane = 0,
 
     # ===== Cost Scheme =====
@@ -102,24 +103,12 @@ METADRIVE_DEFAULT_CONFIG = dict(
 
 
 def denormalize_lidar_data(vehicles_info, perceive_distance=50, max_speed_km_h=120):
-    """
-    将 16 维 lidar_observe() 输出的归一化 dx, dy, dvx, dvy 还原为真实单位（米, km/h）。
-
-    :param vehicles_info: list，可以是:
-        - 长度为 16 的 list（会自动拆分为 4 组 [dx, dy, dvx, dvy]）
-        - 已经拆分好的 [[dx, dy, dvx, dvy], [dx, dy, dvx, dvy], ...]
-    :param perceive_distance: int，车辆的感知范围（米）
-    :param max_speed_km_h: int，车辆的最大速度（km/h）
-    :return: list，包含未归一化的 [[dx, dy, dvx, dvy], [dx, dy, dvx, dvy], ...] 数据
-    """
 
     denormalized_data = []
 
-    # 如果输入是一维列表（长度 16），则自动拆分成 4 组
     if isinstance(vehicles_info, list) and len(vehicles_info) == 16:
         vehicles_info = [vehicles_info[i:i + 4] for i in range(0, len(vehicles_info), 4)]
 
-    # 确保它是列表的列表
     if not all(isinstance(v, list) and len(v) == 4 for v in vehicles_info):
         print(f"ERROR: Invalid vehicles_info format: {vehicles_info}, expected list of [dx, dy, dvx, dvy] groups.")
         return []
@@ -137,39 +126,24 @@ def denormalize_lidar_data(vehicles_info, perceive_distance=50, max_speed_km_h=1
 
     return denormalized_data
 
-def compute_ellipsoid_risk(vehicles_info, a=4, b=3, px=2, py=2,
-                          pvx=3, pvy=3, pt=2, mf=1):
-    """
-    计算椭圆势场风险值
-
-    :param vehicles_info: list，每个元素是 [dx, dy, dvx, dvy]（真实物理单位，米 & km/h）
-    :param a: float, 椭圆长轴（纵向感知范围，米）
-    :param b: float, 椭圆短轴（横向感知范围，米）
-    :param px: int, 纵向指数
-    :param py: int, 横向指数
-    :param pvx: int, 纵向速度指数
-    :param pvy: int, 横向速度指数
-    :param pt: int, 控制衰减程度
-    :param mf: float, 最大风险值
-    :param speed_factor: float, 速度对风险的影响因子
-    :return: float, 计算得到的风险值（归一化到 0-1）
-    """
+def compute_ellipsoid_risk(vehicles_info, a=6, b=3, px=4, py=4,
+                          pvx=4, pvy=4, pt=1, mf=0.5,l_th = 4,w_th = 3):
     risk_list = []
 
     #dx<4.8,dy<2.5碰撞概率直线上升
     #mf:超车最大风险值
     for dx, dy, dvx, dvy in vehicles_info:
         # 静态风险项 (基于距离)
-        Ec = mf / ((((abs(dx) - 4.6) / a) ** px + ((abs(dy)-2.5) / b) ** py + 1) ** pt)
+        Ec = mf / ((((abs(dx)) / a) ** px + ((abs(dy)) / b) ** py + 1) ** pt)
 
+        s_v = 120
         # 速度修正项 (基于速度)
-        Eb = mf / ((((abs(dx) - 4.6)/ a) ** px + ((abs(dy)-2.5)/ b) ** py + (abs(dvx) / 1) ** pvx + (
-                    abs(dvy) / 1) ** pvy + 1) ** pt)
-
+        Eb = mf / ((((abs(dx))/ a) ** px + ((abs(dy))/ b) ** py + (abs(dvx) / s_v) ** pvx + (
+                    abs(dvy)) ** pvy + 1) ** pt)
         if dx == -50 and dy == -50 and dvx == -120 and dvy == -120:
             cfj = 0.0
         else:
-            cfj = Ec + Eb
+            cfj =  Ec   + Eb
         risk_list.append(cfj)
 
     total_risk = min(sum(risk_list), 1)  # 归一化到 [0,1]
@@ -384,20 +358,27 @@ class MetaDriveEnv(BaseEnv):
         speed = (vehicle.speed_km_h / vehicle.max_speed_km_h)
         progress = long_now - long_last
 
-        now_count = 0
-        other_v_info = None
-        # TODO:获取小车周围信息
+
+        # other_v_info = None
+        # #TODO:获取小车周围信息
         # other_v_info = self.get_single_observation().lidar_observe(vehicle)[:16]
         # vehicles_info = denormalize_lidar_data(other_v_info)
-        #
-        # total_risk = compute_ellipsoid_risk(vehicles_info)
-        # reward -= 0.1 * total_risk
+        # v_s = vehicle.speed_km_h / 3.6
+        # a = vehicle.LENGTH + 0.5 * v_s
+        # b = 1.2 * vehicle.WIDTH
+        # total_risk = compute_ellipsoid_risk(vehicles_info, a=a, b=b)
+        # reward -=  0.12 * total_risk
 
 
         #====================平稳驾驶
         reward += (1 - steer_diff) * 0.004
         reward -= (steer_diff ** 2) * 0.002
 
+        # ==========out of road 风险
+        safe_dist = 0.5 * abs(vehicle.WIDTH - vehicle.navigation.get_current_lane_width())
+        out_of_road_risk = (0.1 / (((vehicle.dist_to_left_side - 0.5 * vehicle.WIDTH) / safe_dist) ** 4 + 1)
+                            + 0.1 / (((vehicle.dist_to_right_side - 0.5 * vehicle.WIDTH) / safe_dist) ** 4 + 1))
+        reward -= out_of_road_risk
 
         # overtake_flag = False
         # #===================超车奖励
@@ -407,24 +388,14 @@ class MetaDriveEnv(BaseEnv):
         #     reward += self.config["overtake_reward"] * delta
         #     print(f"✌超车了，增长 {delta} 次")
         #     overtake_flag = True
-        #
         # self.last_takeover_num = current_takeover_num
 
         reward += self.config["driving_reward"] * progress * positive_road
-
-        speed_factor = 1.0
-        # if vehicle.speed_km_h < 10:
-        #     reward -= 0.04
-        # elif vehicle.speed_km_h > 70 and overtake_flag:
-        #     speed_factor = 2.0
-        #     overtake_flag = False
-
-        reward += speed_factor * self.config["speed_reward"] * speed
-
-        reward += self.config["heading_reward"] * heading_diff  # 过弯问题
-        reward -= (1-heading_diff) * 0.005
-
-
+        if vehicle.speed_km_h < 10:
+            reward -= 0.04
+        reward += self.config["speed_reward"] * speed
+        reward += self.config["heading_reward"] * (1 - 4 * (heading_diff - 0.5) ** 2)
+        reward -= 0.01 * (4 * (heading_diff - 0.5) ** 2)
 
         step_info["step_reward"] = reward
 
@@ -438,10 +409,9 @@ class MetaDriveEnv(BaseEnv):
             reward = -self.config["crash_object_penalty"]
         elif vehicle.crash_sidewalk:
             reward = -self.config["crash_sidewalk_penalty"]
-        elif self.env_step_num > self.navi_distance / self.config['speed_to_cal_time_limit'] * 10:
-            reward = - self.config["run_out_of_time_penalty"]
+        elif self.env_step_num > self.navi_distance / self.config['speed_to_cal_time_limit'] * 6:
+            reward = -self.config["run_out_of_time_penalty"]
         step_info["route_completion"] = vehicle.navigation.route_completion
-
         return reward, step_info
 
 

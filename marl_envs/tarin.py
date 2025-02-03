@@ -17,14 +17,15 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 
 random.seed(123)
 cfg=dict(
+        # map="SOT",
         num_scenarios=500,
         start_seed=123,
         random_lane_width=True,
         random_lane_num=False,
         use_render=False,
-        traffic_density=0,
-        # traffic_mode="hybrid",
-        agent_observation=EgoStateNavigationobservation
+        traffic_density=0.0,
+        agent_observation=EgoStateNavigationobservation,
+        # traffic_mode="hybrid"
     )
 
 base_path = r'C:\Users\xsr\Desktop\ego_state'
@@ -52,10 +53,11 @@ if __name__ == '__main__':
     model = TD3("MlpPolicy", env, action_noise=action_noise, verbose=1,tensorboard_log=log_path)
     # model = PPO('MlpPolicy', env, verbose=1, n_steps=4096, tensorboard_log=log_path)
     model.learn(total_timesteps=3000000, log_interval=100,callback=event_callback)
-    PPO_Path = os.path.join(base_path, 'Training', 'Saved Models', 'no_traffic.zip')
+    PPO_Path = os.path.join(base_path, 'Training', 'Saved Models', 'overtake0.2.zip')
     model.save(PPO_Path)
 
-    # tensorboard --logdir "C:\Users\xsr\Desktop\ego_state\Training\Logs\TD3_1"
+    # tensorboard --logdir "C:\Users\xsr\Desktop\ego_state\Training\Logs\TD3_127" 80%成功率
+
 
     # env = MetaDriveEnv(cfg)
     # episodes = 2

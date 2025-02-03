@@ -25,14 +25,17 @@ def create_env(need_monitor=False):
     return env
 
 if __name__ == '__main__':
+
     cfg = dict(
-        num_scenarios=100,
-        start_seed=0,
+        # map="SOT",
+        num_scenarios=500,
+        start_seed=123,
         random_lane_width=True,
         random_lane_num=False,
         use_render=True,
-        traffic_density=0.1,
-        traffic_mode="hybrid",
+        traffic_density=0.0,
+        agent_observation=EgoStateNavigationobservation,
+        traffic_mode="hybrid"
     )
 
     def create_env_for_testing():
@@ -41,8 +44,7 @@ if __name__ == '__main__':
         return DummyVecEnv([_env_fn])
 
     env = create_env_for_testing()
-    # TD3_Path = os.path.join(base_path, 'Training', 'Saved Models', 'overtake v0.5.zip')
-    TD3_Path = r'D:\anaconda3\envs\metadrive_env\Lib\site-packages\metadrive\envs\marl_envs\logs\rl_model_2457600_steps.zip'
+    TD3_Path = os.path.join(base_path, 'Training', 'Saved Models', 'overtake0.2.zip')
     model = TD3.load(TD3_Path, env=env)
     # episode_rewards, episode_infos = evaluate_policy(
     #     model,
