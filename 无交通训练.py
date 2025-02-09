@@ -21,13 +21,14 @@ cfg=dict(
         num_scenarios=500,
         start_seed=123,
         random_lane_width=True,
-        random_lane_num=False,
+        random_lane_num=True,
         use_render=False,
-        traffic_density=0.1,
-        traffic_mode="hybrid"
+        traffic_density=0.0,
+        traffic_mode="hybrid",
+        agent_observation = EgoStateNavigationobservation
     )
 
-base_path = r'C:\Users\xsr\Desktop\ego_state'
+base_path = r'D:\anaconda3\envs\metadrive_env\Lib\site-packages\metadrive\trainning records'
 log_path = os.path.join(base_path, 'Training', 'Logs')
 
 def create_env(need_monitor=False):
@@ -52,10 +53,10 @@ if __name__ == '__main__':
     model = TD3("MlpPolicy", env, action_noise=action_noise, verbose=1,tensorboard_log=log_path)
     # model = PPO('MlpPolicy', env, verbose=1, n_steps=4096, tensorboard_log=log_path)
     model.learn(total_timesteps=3000000, log_interval=100,callback=event_callback)
-    PPO_Path = os.path.join(base_path, 'Training', 'Saved Models', '全力斗技 v0.1.zip')
+    PPO_Path = os.path.join(base_path, 'Training', 'Saved Models', '无交通 v0.3.zip')
     model.save(PPO_Path)
 
-    # tensorboard --logdir "D:\anaconda3\envs\metadrive_env\Lib\site-packages\metadrive\trainning records\Training\Logs\TD3_4" 80%成功率
+    # tensorboard --logdir "D:\anaconda3\envs\metadrive_env\Lib\site-packages\metadrive\trainning records\Training\Logs\TD3_3" 80%成功率
 
 
     # env = MetaDriveEnv(cfg)

@@ -18,11 +18,12 @@ from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckA
 
 
 cfg=dict(
-        map = "SSSSSS",
+        num_scenarios=500,
+        start_seed=123,
         random_lane_width=True,
-        random_lane_num=False,
+        random_lane_num=True,
         use_render=True,
-        traffic_density=0.1,
+        traffic_density=0.0,
         traffic_mode="hybrid",
         manual_control=True,
         controller="keyboard"
@@ -30,7 +31,7 @@ cfg=dict(
 
 env=MetaDriveEnv(cfg)
 
-num_episodes = 3
+num_episodes = 5
 
 for episode in range(num_episodes):
     obs = env.reset()
@@ -41,7 +42,7 @@ for episode in range(num_episodes):
 
         obs, reward, done, info, _ = env.step(action)
         # 打印当前时间步的奖励值
-w
+
 
 # 关闭环境
 env.close()

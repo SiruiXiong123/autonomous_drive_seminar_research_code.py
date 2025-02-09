@@ -306,6 +306,7 @@ class BaseEnv(gym.Env):
 
         #===========timeout
         self.env_step_num = 0
+        self.last_takeover_step = 0
 
         # lazy initialization, create the main simulation in the lazy_init() func
         # self.engine: Optional[BaseEngine] = None
@@ -535,6 +536,8 @@ class BaseEnv(gym.Env):
         reset_info = self.engine.reset()
         self.reset_sensors()
         self._compute_navi_dist = True
+        self.overtake_cooldown = 30 # 超车后需要保持的步数
+        self.overtake_list = []  # 记录超车发生的时间步
         self.env_step_num = 0
 
         # render the scene

@@ -15,6 +15,11 @@ from metadrive.utils import clip, Config
 from EgostateAndNavigation_obs import EgoStateNavigationobservation
 from mpmath.matrices.eigen import hessenberg_qr
 from openpyxl.styles.builtins import total
+from sqlalchemy import lateral
+from denormalization import denormalize_lidar_data
+from risk_quantification import compute_tuoyuan_risk
+from ttc_risk import compute_ttc_risk
+from combined_risk import compute_combined_risk
 
 METADRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
@@ -22,7 +27,7 @@ METADRIVE_DEFAULT_CONFIG = dict(
     num_scenarios=1,
 
     # ===== PG Map Config =====
-    map=3,  # int or string: an easy way to fill map_config
+    map=4,  # int or string: an easy way to fill map_config
     block_dist_config=PGBlockDistConfig,
     random_lane_width=False,
     random_lane_num=False,
@@ -74,14 +79,14 @@ METADRIVE_DEFAULT_CONFIG = dict(
     success_reward=20.0,
     out_of_road_penalty=5.0,
     run_out_of_time_penalty=5.0,
-    crash_vehicle_penalty=1.0,
+    crash_vehicle_penalty=5.0,
     crash_object_penalty=5.0,
     crash_sidewalk_penalty=5.0,
     driving_reward=1.0,
-    speed_reward=0.2,
+    speed_reward=1.0,
     use_lateral_reward=False,
-    heading_reward=0.15,
-    overtake_reward=0.15,
+    heading_reward=0.10,
+    overtake_reward=1.0,
     reward_w_on_lane = 0,
 
     # ===== Cost Scheme =====
@@ -99,55 +104,11 @@ METADRIVE_DEFAULT_CONFIG = dict(
     crash_vehicle_done=True,
     crash_object_done=True,
     crash_human_done=True,
+
+
+    debug = False,
 )
 
-
-def denormalize_lidar_data(vehicles_info, perceive_distance=50, max_speed_km_h=120):
-
-    denormalized_data = []
-
-    if isinstance(vehicles_info, list) and len(vehicles_info) == 16:
-        vehicles_info = [vehicles_info[i:i + 4] for i in range(0, len(vehicles_info), 4)]
-
-    if not all(isinstance(v, list) and len(v) == 4 for v in vehicles_info):
-        print(f"ERROR: Invalid vehicles_info format: {vehicles_info}, expected list of [dx, dy, dvx, dvy] groups.")
-        return []
-
-    # 进行反归一化
-    for vehicle_info in vehicles_info:
-        dx_norm, dy_norm, dvx_norm, dvy_norm = vehicle_info
-
-        dx_real = (dx_norm * 2 - 1) * perceive_distance
-        dy_real = (dy_norm * 2 - 1) * perceive_distance
-        dvx_real = (dvx_norm * 2 - 1) * max_speed_km_h
-        dvy_real = (dvy_norm * 2 - 1) * max_speed_km_h
-
-        denormalized_data.append([dx_real, dy_real, dvx_real, dvy_real])
-
-    return denormalized_data
-
-def compute_ellipsoid_risk(vehicles_info, a=6, b=3, px=4, py=4,
-                          pvx=4, pvy=4, pt=1, mf=0.5,l_th = 4,w_th = 3):
-    risk_list = []
-
-    #dx<4.8,dy<2.5碰撞概率直线上升
-    #mf:超车最大风险值
-    for dx, dy, dvx, dvy in vehicles_info:
-        # 静态风险项 (基于距离)
-        Ec = mf / ((((abs(dx)) / a) ** px + ((abs(dy)) / b) ** py + 1) ** pt)
-
-        s_v = 120
-        # 速度修正项 (基于速度)
-        Eb = mf / ((((abs(dx))/ a) ** px + ((abs(dy))/ b) ** py + (abs(dvx) / s_v) ** pvx + (
-                    abs(dvy)) ** pvy + 1) ** pt)
-        if dx == -50 and dy == -50 and dvx == -120 and dvy == -120:
-            cfj = 0.0
-        else:
-            cfj =  Ec   + Eb
-        risk_list.append(cfj)
-
-    total_risk = min(sum(risk_list), 1)  # 归一化到 [0,1]
-    return total_risk
 
 class MetaDriveEnv(BaseEnv):
     @classmethod
@@ -358,44 +319,61 @@ class MetaDriveEnv(BaseEnv):
         speed = (vehicle.speed_km_h / vehicle.max_speed_km_h)
         progress = long_now - long_last
 
-
+        # now_count = 0
         # other_v_info = None
-        # #TODO:获取小车周围信息
-        # other_v_info = self.get_single_observation().lidar_observe(vehicle)[:16]
+        # other_v_info = self.get_single_observation().lidar_observe(vehicle)[:24]
         # vehicles_info = denormalize_lidar_data(other_v_info)
-        # v_s = vehicle.speed_km_h / 3.6
-        # a = vehicle.LENGTH + 0.5 * v_s
-        # b = 1.2 * vehicle.WIDTH
-        # total_risk = compute_ellipsoid_risk(vehicles_info, a=a, b=b)
-        # reward -=  0.12 * total_risk
+        v_s = vehicle.speed
 
+        lane_width = vehicle.navigation.get_current_lane_width()
+        # total_risk = compute_tuoyuan_risk(vehicles_info, v_s=v_s,
+        #              lane_width=lane_width,v_l = vehicle.LENGTH,v_w=vehicle.WIDTH)
+        # total_risk = compute_tuoyuan_risk(vehicles_info, v_s=v_s,lane_width=lane_width
+        #                                   ,v_l = vehicle.LENGTH,v_w=vehicle.WIDTH)
+        # total_risk = compute_combined_risk(vehicles_info, v_s=v_s, lane_width=lane_width
+        #                                   , v_l=vehicle.LENGTH, v_w=vehicle.WIDTH)
+        # reward -= 0.2 * total_risk
+        # print("总风险",total_risk)
 
-        #====================平稳驾驶
-        reward += (1 - steer_diff) * 0.004
-        reward -= (steer_diff ** 2) * 0.002
 
         # ==========out of road 风险
-        safe_dist = 0.5 * abs(vehicle.WIDTH - vehicle.navigation.get_current_lane_width())
-        out_of_road_risk = (0.1 / (((vehicle.dist_to_left_side - 0.5 * vehicle.WIDTH) / safe_dist) ** 4 + 1)
-                            + 0.1 / (((vehicle.dist_to_right_side - 0.5 * vehicle.WIDTH) / safe_dist) ** 4 + 1))
-        reward -= out_of_road_risk
+        if vehicle.dist_to_left_side < 0.5*lane_width:
+            out_of_risk_l = 0.1/(((vehicle.dist_to_left_side-0.5*vehicle.WIDTH)/(0.5*lane_width))**2+1)
+        else:
+            out_of_risk_l = 0.0
+        if vehicle.dist_to_right_side < 0.5*lane_width:
+            out_of_risk_r = 0.1/(((vehicle.dist_to_right_side-0.5*vehicle.WIDTH)/(0.5*lane_width))**2+1)
+        else:
+            out_of_risk_r = 0.0
+        reward -= 2 * (out_of_risk_l + out_of_risk_r)
+        # print("左侧出界风险,右侧出界风险",out_of_risk_l,out_of_risk_r)
+
+
+        if vehicle.dist_to_left_side >=0.5*lane_width and vehicle.dist_to_right_side >= 0.5*lane_width:
+            reward += 0.02
+
+         # ====================平稳驾驶
+        reward += (1 - steer_diff) * 0.05
+        reward -= (steer_diff ** 2) * 0.05
 
         # overtake_flag = False
         # #===================超车奖励
         # current_takeover_num = vehicle.get_overtake_num()
         # delta = current_takeover_num - self.last_takeover_num
-        # if delta > 0:
+        # if delta > 0 and not vehicle.crash_vehicle:
         #     reward += self.config["overtake_reward"] * delta
-        #     print(f"✌超车了，增长 {delta} 次")
+        #     print(f"🚀超车了，增长 {delta} 次")
         #     overtake_flag = True
+
         # self.last_takeover_num = current_takeover_num
+        heading = 1/(abs(0.5-heading_diff)+1)
 
         reward += self.config["driving_reward"] * progress * positive_road
-        if vehicle.speed_km_h < 10:
-            reward -= 0.04
         reward += self.config["speed_reward"] * speed
-        reward += self.config["heading_reward"] * (1 - 4 * (heading_diff - 0.5) ** 2)
-        reward -= 0.01 * (4 * (heading_diff - 0.5) ** 2)
+        reward += self.config["heading_reward"] * heading
+        reward -= 0.01 * heading
+
+
 
         step_info["step_reward"] = reward
 
@@ -409,9 +387,10 @@ class MetaDriveEnv(BaseEnv):
             reward = -self.config["crash_object_penalty"]
         elif vehicle.crash_sidewalk:
             reward = -self.config["crash_sidewalk_penalty"]
-        elif self.env_step_num > self.navi_distance / self.config['speed_to_cal_time_limit'] * 6:
-            reward = -self.config["run_out_of_time_penalty"]
+        elif self.env_step_num > self.navi_distance / self.config['speed_to_cal_time_limit'] * 10:
+            reward = - self.config["run_out_of_time_penalty"]
         step_info["route_completion"] = vehicle.navigation.route_completion
+
         return reward, step_info
 
 

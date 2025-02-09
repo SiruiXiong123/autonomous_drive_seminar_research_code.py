@@ -15,7 +15,7 @@ import random
 
 random.seed(123)
 
-base_path = r'C:\Users\xsr\Desktop\ego_state'
+base_path = r'D:\anaconda3\envs\metadrive_env\Lib\site-packages\metadrive\trainning records'
 log_path = os.path.join(base_path, 'Training', 'Logs')
 
 def create_env(need_monitor=False):
@@ -31,11 +31,11 @@ if __name__ == '__main__':
         num_scenarios=500,
         start_seed=123,
         random_lane_width=True,
-        random_lane_num=False,
+        random_lane_num=True,
         use_render=True,
         traffic_density=0.0,
-        agent_observation=EgoStateNavigationobservation,
-        traffic_mode="hybrid"
+        traffic_mode="hybrid",
+        agent_observation=EgoStateNavigationobservation
     )
 
     def create_env_for_testing():
@@ -44,7 +44,8 @@ if __name__ == '__main__':
         return DummyVecEnv([_env_fn])
 
     env = create_env_for_testing()
-    TD3_Path = os.path.join(base_path, 'Training', 'Saved Models', 'overtake0.2.zip')
+    # TD3_Path = os.path.join(base_path, 'Training', 'Saved Models', 'overtake0.2.zip')
+    TD3_Path = r'D:\anaconda3\envs\metadrive_env\Lib\site-packages\metadrive\trainning records\Training\Saved Models\无交通 v0.2.zip'
     model = TD3.load(TD3_Path, env=env)
     # episode_rewards, episode_infos = evaluate_policy(
     #     model,
